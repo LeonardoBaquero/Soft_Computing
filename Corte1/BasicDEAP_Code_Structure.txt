@@ -1,0 +1,57 @@
+import random
+import operator
+import numpy as np
+from deap import base
+from deap import tools
+from deap import creator
+
+# Define the problem
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("Individual", list, fitness=creator.FitnessMax)
+
+# Initialize toolbox
+toolbox = base.Toolbox()
+toolbox.register("random_triple", random.sample, range(n), 3)
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.random_triple, n // 3)
+toolbox.register("population", tools.initRepeat, list, toolbox.individual, npop)
+
+# Define fitness function
+def evaluate(individual):
+    # Implement your fitness function here, calculating the number of unsatisfied constraints
+    return (fitness,)
+
+toolbox.register("evaluate", evaluate)
+
+# Register genetic operators
+toolbox.register("select", tools.selTournament, tournsize=3)
+toolbox.register("mate", tools.cxTwoPoint)
+toolbox.register("mutate", tools.mutUniformInt, low=0, high=n-1, indpb=0.1)
+
+# Run the genetic algorithm
+population = toolbox.population(npop)
+hof = tools.HallOfFame(1)
+stats = tools.Statistics(lambda ind: ind.fitness.values)
+stats.register("avg", np.mean)
+stats.register("min", np.min)
+stats.register("max", np.max)
+
+# Evolve the population
+for gen in range(ngen):
+    offspring = tools.selTournament(population, len(population), tournsize=3)
+    offspring = [toolbox.clone(ind) for ind in offspring]
+    random.shuffle(offspring)
+    for i in range(0, len(offspring), 2):
+        toolbox.mate(offspring[i], offspring[i+1])
+        del offspring[i].fitness.values
+        del offspring[i+1].fitness.values
+    for ind in offspring:
+        toolbox.mutate(ind)
+        del ind.fitness.values
+    population += offspring
+    fitness_values = list(map(toolbox.evaluate, population))
+    for ind, fit in zip(population, fitness_values):
+        ind.fitness.values = fit
+    population = tools.selTournament(population, npop, tournsize=3)
+    hof.update(population)
+    record = stats.compile(population)
+    print(f"Generation {gen}: {record}")

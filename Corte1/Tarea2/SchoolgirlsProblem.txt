@@ -1,0 +1,62 @@
+
+#### Documentation: Ortools --->  https://developers.google.com/optimization
+
+!pip install ortools
+
+from ortools.sat.python import cp_model
+# Crear una instancia del modelo de programación con restricciones
+def solve_kirkman():
+    model = cp_model.CpModel()
+
+    # Constantes
+    num_girls = 9 # Colegialas
+    num_days = 5 # Dias
+    group_size = 3 # Grupo
+    num_groups = num_girls // group_size # Número de grupos por día
+
+    # Variables
+    girls = {}
+    for day in range(num_days):
+        for group in range(num_groups):
+            for position in range(group_size):
+                # Crear una variable para cada posición en cada grupo de cada día
+                # La variable representa el índice de la niña en esa posición
+                girls[day, group, position] = model.NewIntVar(0, num_girls - 1, f'girl_d{day}_g{group}_p{position}')
+
+    # Restricciones
+    # # 1. Cada niña aparece una vez por día
+    for day in range(num_days):
+        model.AddAllDifferent([girls[day, group, position] for group in range(num_groups) for position in range(group_size)])
+
+    # 2. Ninguna pareja de niñas camina juntas más de una vez
+    for girl1 in range(num_girls):
+        for girl2 in range(girl1 + 1, num_girls):
+            count = model.NewIntVar(0, 1, f'count_{girl1}_{girl2}')
+            pairings = []
+            for day in range(num_days):
+                for group in range(num_groups):
+                    for pos1 in range(group_size):
+                        for pos2 in range(group_size):
+                            if pos2 != pos1:
+                              # Crear una variable booleana que indica si las niñas girl1 y girl2 están juntas en el grupo
+                                pairings.append(model.NewBoolVar(f'pairing_{girl1}_{girl2}_{day}_{group}_{pos1}_{pos2}'))
+                                model.Add(girls[day, group, pos1] == girl1).OnlyEnforceIf(pairings[-1])
+                                model.Add(girls[day, group, pos2] == girl2).OnlyEnforceIf(pairings[-1])
+            model.Add(sum(pairings) == 1)
+
+    # Resolver el modelo
+    solver = cp_model.CpSolver()
+    status = solver.Solve(model)
+
+    # Imprimir solucion
+    if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        print("Solution found:")
+        for day in range(num_days):
+            print(f"Day {day + 1}:")
+            for group in range(num_groups):
+                print("  Group", [solver.Value(girls[day, group, position]) + 1 for position in range(group_size)])
+    else:
+        print("No solution found.")
+
+if __name__ == "__main__":
+    solve_kirkman()

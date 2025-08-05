@@ -1,0 +1,84 @@
+## Fuentes de consulta 
+## Documentacion DEAP: https://deap.readthedocs.io/en/master/overview.html
+## Portal academico UNAM: https://e1.portalacademico.cch.unam.mx/alumno/matematicas1/unidad1/OpNumerosEnteros/cuadrosMagicos
+
+
+import random
+from deap import base, creator, tools, algorithms
+
+# Definir el tamaño del cuadrado mágico
+N = 3
+# La constante mágica para un cuadrado mágico de tamaño NxN
+MAGIC_CONSTANT = N * (N**2 + 1) // 2
+
+# Crear clases de fitness y de individuo
+# FitnessMin es una clase que indica que queremos minimizar la función de aptitud (fitness)
+creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+# Individual es una clase que extiende una lista y tiene un atributo de fitness
+creator.create("Individual", list, fitness=creator.FitnessMin)
+
+# Inicializar la caja de herramientas de DEAP
+toolbox = base.Toolbox()
+
+# Definir la inicialización de genes e individuos
+# attr_int es un atributo que se genera como un número entero aleatorio entre 1 y N^2
+toolbox.register("attr_int", random.randint, 1, N**2)
+# individual es una lista de tamaño N^2 de números enteros, que representa un cuadrado mágico
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.attr_int, n=N**2)
+# population es una lista de individuos
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+# Función de evaluación
+def evalMagicSquare(individual):
+    # Convertir la lista en una matriz cuadrada
+    square = [individual[i:i+N] for i in range(0, len(individual), N)]
+    # Calcular las sumas de las filas
+    row_sums = [sum(row) for row in square]
+    # Calcular las sumas de las columnas
+    col_sums = [sum(col) for col in zip(*square)]
+    # Calcular la suma de la diagonal principal
+    diag1_sum = sum(square[i][i] for i in range(N))
+    # Calcular la suma de la diagonal secundaria
+    diag2_sum = sum(square[i][N-1-i] for i in range(N))
+    
+    # Combinar todas las sumas
+    all_sums = row_sums + col_sums + [diag1_sum, diag2_sum]
+    # Calcular el error como la suma de las diferencias absolutas respecto a la constante mágica
+    error = sum(abs(s - MAGIC_CONSTANT) for s in all_sums)
+    
+    return error,
+
+# Registrar los operadores genéticos
+# evaluate es la función de evaluación que calcula la aptitud (fitness) de un individuo
+toolbox.register("evaluate", evalMagicSquare)
+# mate es el operador de cruce, que realiza un cruce de dos puntos
+toolbox.register("mate", tools.cxTwoPoint)
+# mutate es el operador de mutación, que reordena los índices de la lista con una probabilidad de 0.05
+toolbox.register("mutate", tools.mutShuffleIndexes, indpb=0.05)
+# select es el operador de selección, que utiliza un torneo de tamaño 3 para seleccionar individuos
+toolbox.register("select", tools.selTournament, tournsize=3)
+
+# Función principal
+def main():
+    # Crear una población inicial de 300 individuos
+    pop = toolbox.population(n=300)
+    # Hall of Fame (mejor individuo encontrado)
+    hof = tools.HallOfFame(1)
+    # Estadísticas para el registro de la evolución
+    stats = tools.Statistics(lambda ind: ind.fitness.values)
+    # Registrar la estadística mínima (mejor aptitud)
+    stats.register("min", min)
+    
+    # Ejecutar el algoritmo genético simple con la población, operadores genéticos y estadísticas
+    pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.7, mutpb=0.2, ngen=1000, 
+                                   stats=stats, halloffame=hof, verbose=True)
+    
+    # Obtener y mostrar la mejor solución
+    best = hof[0]
+    print("\nBest Solution:")
+    for i in range(0, len(best), N):
+        print(best[i:i+N])
+
+# Ejecutar la función principal si este script se ejecuta directamente
+if __name__ == "__main__":
+    main()
